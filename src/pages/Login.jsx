@@ -9,7 +9,7 @@ import Alert from '@mui/material/Alert'
 import { useForm } from 'react-hook-form'
 import Typography from '@mui/material/Typography'
 import TrungQuanDevIcon from '../assets/trungquandev-logo.png'
-import axios from 'axios'
+import authorizedAxiosInstance from '~/utils/authorizedAxios'
 import { toast } from 'react-toastify'
 import { API_ROOT } from '~/utils/constants'
 
@@ -18,13 +18,9 @@ function Login() {
 
   const submitLogIn = async (data) => {
     console.log('submit login: ', data)
-    try {
-      const res = await axios.post(`${API_ROOT}/v1/users/login`, data)
-      console.log(res.data)
-      toast.success(res.data?.message)
-    } catch (error) {
-      toast.error(error.response?.data?.message || error?.message)
-    }
+    const res = await authorizedAxiosInstance.post(`${API_ROOT}/v1/users/login`, data)
+    console.log(res.data)
+    toast.success(res.data?.message)
   }
 
   return (
@@ -48,8 +44,8 @@ function Login() {
             </Box>
             <Box sx={{ display: 'flex', justifyContent: 'center', color: theme => theme.palette.grey[500] }}>
               <Box>
-                <Typography>Hint: trungquandev.official@gmail.com</Typography>
-                <Typography>Pass: trungquandev@123</Typography>
+                <Typography>Hint: mduc1203@gmail.com</Typography>
+                <Typography>Pass: mduc@1203</Typography>
               </Box>
             </Box>
             <Box sx={{ padding: '0 1em 1em 1em' }}>
