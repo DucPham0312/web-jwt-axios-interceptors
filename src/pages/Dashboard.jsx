@@ -2,15 +2,19 @@
 import { useEffect, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
+import Button from '@mui/material/Button'
 import Typography from '@mui/material/Typography'
 import CircularProgress from '@mui/material/CircularProgress'
 import Divider from '@mui/material/Divider'
 import authorizedAxiosInstance from '~/utils/authorizedAxios'
 import { toast } from 'react-toastify'
 import { API_ROOT } from '~/utils/constants'
+import { useNavigate } from 'react-router-dom'
+
 
 function Dashboard() {
   const [user, setUser] = useState(null)
+  const navidate = useNavigate()
 
   useEffect(() => {
     const fetchData = async () => {
@@ -22,6 +26,19 @@ function Dashboard() {
     }
     fetchData()
   }, [])
+  const handleLogout = async () => {
+    //TH1: localStorage: Xóa thông tin user trong localStorage
+    localStorage.removeItem('accessToken')
+    localStorage.removeItem('refreshToken')
+    localStorage.removeItem('userInfo')
+
+    //TH2: HttpOnly Cookie: Gọi api để xử lí only cookie
+    await authorizedAxiosInstance.delete(`${API_ROOT}/v1/users/logout`)
+    setUser(null)
+
+    //Cuối cùng điều hướng đến trang login
+    navidate('/login')
+  }
 
   if (!user) {
     return (
@@ -53,6 +70,17 @@ function Dashboard() {
         <Typography variant="span" sx={{ fontWeight: 'bold', '&:hover': { color: '#fdba26' } }}>{user?.email}</Typography>
         &nbsp; đăng nhập thành công thì mới cho truy cập vào.
       </Alert>
+
+      <Button
+        type='button'
+        variant='contained'
+        color='info'
+        size='large'
+        sx={{ mt:2, maxWidth: 'min-content', alignSelf: 'flex-end' }}
+        onClick={handleLogout}
+      >
+        Logout
+      </Button>
 
       <Divider sx={{ my: 2 }} />
     </Box>
