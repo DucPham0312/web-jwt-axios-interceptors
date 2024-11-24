@@ -32,6 +32,14 @@ authorizedAxiosInstance.interceptors.request.use((config) => {
   return Promise.reject(error)
 })
 
+
+/**- Khởi tạo 1 Promise cho việc gọi lại api refresh Token
+ * - Mục đích tạo Promise này để khi nhận yêu cầu refreshToken đầu tiên thì hold lại việc gọi API refresh_token cho tới khi 
+ * xong xuôi thì mới retry lại những api bị lỗi trước đó thay vì gọi lại refreshToken liên tục với mỗi req lỗi
+*/
+let refreshTokenPromise = null
+
+
 // Add a response interceptor: Can thiệp vào giữa cái res nhận về từ API
 authorizedAxiosInstance.interceptors.response.use((response) => {
   //Mọi mã http StatusCOde nằm trong khoảng 200-299 sẽ là success và rơi vào đây
@@ -57,38 +65,47 @@ authorizedAxiosInstance.interceptors.response.use((response) => {
   //Đầu tiên lấy được các req API đang bị lỗi thông qua error.config
   const originalRequest = error.config
   // console.log('originalRequest: ', originalRequest)
-  if (error.response?.status === 410 && !originalRequest._retry) {
-    //Gán thêm 1 giá trị _retry luôn = true trong khoảng thời gian chờ, để việc refresh token này chỉ luôn gọi 1 lần tại 1 thời gian
-    originalRequest._retry = true
+  if (error.response?.status === 410 && originalRequest) {
 
-    // Lấy refresh từ localStorage (Th LocalS)
-    const refreshToken = localStorage.getItem('refreshToken')
+    if (!refreshTokenPromise) {
+      // Lấy refresh từ localStorage (Th LocalS)
+      const refreshToken = localStorage.getItem('refreshToken')
 
-    //Gọi api refresh token
-    return refreshTokenAPI(refreshToken)
-      .then((res) => {
-        //Lấy và gán lại accessToken vào LocalS(TH localS)
-        const { accessToken } = res.data
-        localStorage.setItem('accessToken', accessToken)
-        authorizedAxiosInstance.defaults.headers.Authorization = `Bearer ${accessToken}`
+      //Gọi api refresh token
+      refreshTokenPromise = refreshTokenAPI(refreshToken)
+        .then((res) => {
+          //Lấy và gán lại accessToken vào LocalS(TH localS)
+          const { accessToken } = res.data
+          localStorage.setItem('accessToken', accessToken)
+          authorizedAxiosInstance.defaults.headers.Authorization = `Bearer ${accessToken}`
 
-        //Đồng thời là accessToken đã được update lại ở cookie rồi(TH Cookie)
+          //Đồng thời là accessToken đã được update lại ở cookie rồi(TH Cookie)
+          //...
 
-        //Bước cuối quan trọng: return lại axios instance kết hợp với originalRequest để gọi lại nhứng api ban đầu bị lỗi
-        return authorizedAxiosInstance(originalRequest)
-      })
-      .catch((_error) => {
-        //Nếu nhận bất kì lỗi nào từ api refresh token thì logout luôn
-        handleLogoutAPI().then(() => {
-          //Nếu Th dùng cookie thì xóa userInfo trong LocalStorage
-          // localStorage.removeItem('userInfo')  //Dung cookie
-
-          //Điều hướng tới trang Login sau khi Logout thành công, dùng JS thuần
-          location.href = '/login'
         })
+        .catch((_error) => {
+          //Nếu nhận bất kì lỗi nào từ api refresh token thì logout luôn
+          handleLogoutAPI().then(() => {
+            //Nếu Th dùng cookie thì xóa userInfo trong LocalStorage
+            // localStorage.removeItem('userInfo')  //Dung cookie
 
-        return Promise.reject(_error)
-      })
+            //Điều hướng tới trang Login sau khi Logout thành công, dùng JS thuần
+            location.href = '/login'
+          })
+
+          return Promise.reject(_error)
+        })
+        .finally(() => {
+          //Dù API refresh_token có thành công hay lỗi thì vẫn giữ lại cái refreshTokenPromise về null như ban đầu
+          refreshTokenPromise = null
+        })
+    }
+
+    //Cuối cùng mới return cái refreshTokenPromise trong trường hợp success ở đây
+    return refreshTokenPromise.then(() => {
+      //Bước cuối quan trọng: return lại axios instance kết hợp với originalRequest để gọi lại nhứng api ban đầu bị lỗi
+      return authorizedAxiosInstance(originalRequest)
+    })
   }
 
   //xử lí lỗi tập trung phần hiển thị thông báo trả về từ mọi api(clean code)

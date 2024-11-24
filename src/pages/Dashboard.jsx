@@ -27,6 +27,20 @@ function Dashboard() {
     fetchData()
   }, [])
 
+  /**Xử lí vấn đề API Refresh Token bị gọi nhiều lần */
+  useEffect(() => {
+    const fetchData = async () => {
+      await authorizedAxiosInstance.get(`${API_ROOT}/v1/dashboards/access`)
+    }
+    fetchData()
+  }, [])
+
+  useEffect(() => {
+    const fetchData = async () => {
+      await authorizedAxiosInstance.get(`${API_ROOT}/v1/dashboards/access`)
+    }
+    fetchData()
+  }, [])
 
   const handleLogout = async () => {
     //Gọi api Logout
