@@ -1,5 +1,6 @@
 import axios from 'axios'
 import { toast } from 'react-toastify'
+import { handleLogoutAPI, refreshTokenAPI } from '~/apis'
 
 
 // khởi tạo một đóio tượng Axios (authorizedAxiosInstance) mục đính để custom và cấu hình chung cho dự án
@@ -41,11 +42,59 @@ authorizedAxiosInstance.interceptors.response.use((response) => {
   // Do something with response error
   // console.log(error)
 
+  /**Quan trong: Xử lí Refresh Token tự động */
+  // Nếu nhận về mã 401 từ BE, gọi api Logout luôn
+  if (error.response?.status === 401) {
+    handleLogoutAPI().then(() => {
+      //Nếu Th dùng cookie thì xóa userInfo trong LocalStorage
+      // localStorage.removeItem('userInfo')  //Dung cookie
+
+      //Điều hướng tới trang Login sau khi Logout thành công, dùng JS thuần
+      location.href = '/login'
+    })
+  }
+  //Nếu nhận mã 410 từ BE, gọi tới api Refesh Token để làm mới accessToken
+  //Đầu tiên lấy được các req API đang bị lỗi thông qua error.config
+  const originalRequest = error.config
+  // console.log('originalRequest: ', originalRequest)
+  if (error.response?.status === 410 && !originalRequest._retry) {
+    //Gán thêm 1 giá trị _retry luôn = true trong khoảng thời gian chờ, để việc refresh token này chỉ luôn gọi 1 lần tại 1 thời gian
+    originalRequest._retry = true
+
+    // Lấy refresh từ localStorage (Th LocalS)
+    const refreshToken = localStorage.getItem('refreshToken')
+
+    //Gọi api refresh token
+    return refreshTokenAPI(refreshToken)
+      .then((res) => {
+        //Lấy và gán lại accessToken vào LocalS(TH localS)
+        const { accessToken } = res.data
+        localStorage.setItem('accessToken', accessToken)
+        authorizedAxiosInstance.defaults.headers.Authorization = `Bearer ${accessToken}`
+
+        //Đồng thời là accessToken đã được update lại ở cookie rồi(TH Cookie)
+
+        //Bước cuối quan trọng: return lại axios instance kết hợp với originalRequest để gọi lại nhứng api ban đầu bị lỗi
+        return authorizedAxiosInstance(originalRequest)
+      })
+      .catch((_error) => {
+        //Nếu nhận bất kì lỗi nào từ api refresh token thì logout luôn
+        handleLogoutAPI().then(() => {
+          //Nếu Th dùng cookie thì xóa userInfo trong LocalStorage
+          // localStorage.removeItem('userInfo')  //Dung cookie
+
+          //Điều hướng tới trang Login sau khi Logout thành công, dùng JS thuần
+          location.href = '/login'
+        })
+
+        return Promise.reject(_error)
+      })
+  }
+
   //xử lí lỗi tập trung phần hiển thị thông báo trả về từ mọi api(clean code)
   //Dùng toastify đê hiển thị lõio lên màn hình trừ lỗi 410- GONE phục vụ việc tự động refresh lại token
   if (error.response?.status !== 410) {
     toast.error(error.response?.data?.message || error?.message)
-
   }
 
   return Promise.reject(error)

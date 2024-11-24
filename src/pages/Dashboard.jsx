@@ -7,9 +7,9 @@ import Typography from '@mui/material/Typography'
 import CircularProgress from '@mui/material/CircularProgress'
 import Divider from '@mui/material/Divider'
 import authorizedAxiosInstance from '~/utils/authorizedAxios'
-import { toast } from 'react-toastify'
 import { API_ROOT } from '~/utils/constants'
 import { useNavigate } from 'react-router-dom'
+import { handleLogoutAPI } from '~/apis'
 
 
 function Dashboard() {
@@ -19,22 +19,20 @@ function Dashboard() {
   useEffect(() => {
     const fetchData = async () => {
       const res = await authorizedAxiosInstance.get(`${API_ROOT}/v1/dashboards/access`)
-      console.log('data from api: ', res.data)
-      console.log('data from localstorage: ', JSON.parse(localStorage.getItem('userInfo')))
+      // console.log('data from api: ', res.data)
+      // console.log('data from localstorage: ', JSON.parse(localStorage.getItem('userInfo')))
 
       setUser(res.data)
     }
     fetchData()
   }, [])
-  const handleLogout = async () => {
-    //TH1: localStorage: Xóa thông tin user trong localStorage
-    localStorage.removeItem('accessToken')
-    localStorage.removeItem('refreshToken')
-    localStorage.removeItem('userInfo')
 
-    //TH2: HttpOnly Cookie: Gọi api để xử lí only cookie
-    await authorizedAxiosInstance.delete(`${API_ROOT}/v1/users/logout`)
-    setUser(null)
+
+  const handleLogout = async () => {
+    //Gọi api Logout
+    await handleLogoutAPI()
+    //Nếu Th dùng cookie thì xóa userInfo trong LocalStorage
+    // localStorage.removeItem('userInfo')  //Dung cookie
 
     //Cuối cùng điều hướng đến trang login
     navidate('/login')

@@ -10,7 +10,7 @@ import Dashboard from '~/pages/Dashboard'
  */
 const ProtectedRoute = () => {
   const user = JSON.parse(localStorage.getItem('userInfo'))
-  console.log('user:', user)
+  // console.log('user:', user)
   if (!user) return <Navigate to="/login" replace={true}/>
   return <Outlet />
 }
